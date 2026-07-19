@@ -39,6 +39,26 @@ class RumCLI:
 
         return target_info, sql_statements
 
+    def _print_statement(self, stmt: str):
+        import re
+
+        # Redact password if it's a CREATE USER statement
+        display_stmt = stmt
+        if display_stmt.startswith("CREATE USER") and "PASSWORD" in display_stmt:
+            display_stmt = re.sub(r"PASSWORD '.*'", "PASSWORD '***REDACTED***'", display_stmt)
+
+        if (
+            display_stmt.startswith("REVOKE")
+            or display_stmt.startswith("DROP")
+            or (
+                display_stmt.startswith("ALTER DEFAULT PRIVILEGES IN SCHEMA")
+                and "REVOKE" in display_stmt
+            )
+        ):
+            console.print(f"[bold red]  {display_stmt}[/bold red]")
+        else:
+            console.print(f"[bold green]  {display_stmt}[/bold green]")
+
     def plan(self, config: str = "config.yaml"):
         """Show the generated SQL plan based on config against live state."""
         target_info, sql_statements = self._get_plan(config)
@@ -51,15 +71,7 @@ class RumCLI:
 
         console.print("[bold yellow]Plan:[/bold yellow]")
         for stmt in sql_statements:
-            if (
-                stmt.startswith("REVOKE")
-                or stmt.startswith("DROP")
-                or stmt.startswith("ALTER DEFAULT PRIVILEGES IN SCHEMA")
-                and "REVOKE" in stmt
-            ):
-                console.print(f"[bold red]  {stmt}[/bold red]")
-            else:
-                console.print(f"[bold green]  {stmt}[/bold green]")
+            self._print_statement(stmt)
 
     def apply(self, config: str = "config.yaml", auto_approve: bool = False):
         """Apply the generated SQL plan to the database."""
@@ -73,15 +85,7 @@ class RumCLI:
 
         console.print("[bold yellow]Plan to apply:[/bold yellow]")
         for stmt in sql_statements:
-            if (
-                stmt.startswith("REVOKE")
-                or stmt.startswith("DROP")
-                or stmt.startswith("ALTER DEFAULT PRIVILEGES IN SCHEMA")
-                and "REVOKE" in stmt
-            ):
-                console.print(f"[bold red]  {stmt}[/bold red]")
-            else:
-                console.print(f"[bold green]  {stmt}[/bold green]")
+            self._print_statement(stmt)
 
         if not auto_approve:
             if not Confirm.ask("[bold yellow]Do you want to apply these changes?[/bold yellow]"):

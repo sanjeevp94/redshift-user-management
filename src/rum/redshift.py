@@ -69,4 +69,14 @@ def fetch_live_state(
             resource_type = "table" if object_type.lower() == "table" else object_type.lower()
             live_role_grants.add((role_name, resource_type, entity, privilege.upper()))
 
+        # 6. Fetch schema privileges
+        cur.execute("""
+            SELECT grantee, namespace_name, privilege_type
+            FROM svv_schema_privileges
+            WHERE grantee LIKE 'rum_role_%' AND namespace_name IS NOT NULL
+        """)
+        for row in cur.fetchall():
+            role_name, schema_name, privilege = row
+            live_role_grants.add((role_name, "schema", schema_name, privilege.upper()))
+
     return live_users, live_roles, live_user_roles, live_role_grants

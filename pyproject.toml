@@ -10,6 +10,12 @@ dependencies = [
     "psycopg2-binary>=2.9.9",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-mock>=3.10.0"
+]
+
 [project.scripts]
 rum = "rum.cli:main"
 

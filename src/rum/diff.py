@@ -35,25 +35,39 @@ def calculate_diff(
 ) -> List[str]:
     sql_statements: List[str] = []
 
+    # Implicitly add SCHEMA USAGE for every schema referenced in table/model desired grants.
+    # We shouldn't grant usage if the role is going to be dropped, but adding it to desired_role_grants
+    # prevents it from being revoked incorrectly.
+    implicit_schema_grants = set()
+    for grant in desired_role_grants:
+        role, resource_type, entity, _ = grant
+        if resource_type in ("table", "model"):
+            schema = entity.split(".")[0]
+            implicit_schema_grants.add((role, "schema", schema, "USAGE"))
+
+    desired_role_grants = desired_role_grants.union(implicit_schema_grants)
+
     # Calculate sets
     users_to_drop = live_users - desired_users
     roles_to_drop = live_roles - desired_roles
     user_roles_to_revoke = live_user_roles - desired_user_roles
-    role_grants_to_revoke = live_role_grants - desired_role_grants
+
+    raw_role_grants_to_revoke = live_role_grants - desired_role_grants
+    # Filter revokes to prevent dropping individual tables if a wildcard exists in desired.
+    role_grants_to_revoke = set()
+    for grant in raw_role_grants_to_revoke:
+        role, resource_type, entity, privilege = grant
+        if resource_type in ("table", "model") and "." in entity:
+            schema = entity.split(".")[0]
+            wildcard_grant = (role, resource_type, f"{schema}.*", privilege)
+            if wildcard_grant in desired_role_grants:
+                continue  # Skip revoking the individual entity because the wildcard covers it
+        role_grants_to_revoke.add(grant)
 
     users_to_create = desired_users - live_users
     roles_to_create = desired_roles - live_roles
     user_roles_to_grant = desired_user_roles - live_user_roles
     role_grants_to_grant = desired_role_grants - live_role_grants
-
-    # We need to extract the unique schema usages to grant from the role grants.
-    # We shouldn't grant usage if the role is going to be dropped.
-    # It applies to any grant in desired state, we ensure they have schema usage.
-    schemas_to_grant_usage: Set[Tuple[str, str]] = set()  # (role, schema)
-    for grant in desired_role_grants:
-        role, _, entity, _ = grant
-        schema = entity.split(".")[0]
-        schemas_to_grant_usage.add((role, schema))
 
     # We need to order operations precisely:
     # 1. Revoke default privileges (future tables).
@@ -116,26 +130,28 @@ def calculate_diff(
     for user, role in user_roles_to_grant:
         sql_statements.append(f'GRANT ROLE "{role}" TO "{user}";')
 
-    # 9. Grant usage on schemas.
-    # If the user is new or role is new, we don't have schema usage, but even if they are not new,
-    # if there is any desired grant, it's safer to ensure they have USAGE ON SCHEMA.
-    # Because we will deduplicate later, it's okay to emit these.
-    for role, schema in schemas_to_grant_usage:
-        sql_statements.append(f'GRANT USAGE ON SCHEMA {_quote_ident(schema)} TO "{role}";')
-
-    # 10. Grant table privileges (and alter default privileges for .* entities).
+    # 9. Grant schema privileges (including implicitly added USAGE).
     for role, resource_type, entity, privilege in role_grants_to_grant:
-        if entity.endswith(".*"):
+        if resource_type == "schema":
+            sql_statements.append(
+                f'GRANT {privilege} ON SCHEMA {_quote_ident(entity)} TO "{role}";'
+            )
+
+    # 10. Grant privileges (and alter default privileges for .* entities).
+    for role, resource_type, entity, privilege in role_grants_to_grant:
+        if resource_type == "schema":
+            continue
+        elif entity.endswith(".*"):
             schema = entity.split(".")[0]
             obj_type = "ALL TABLES" if resource_type == "table" else "ALL MODELS"
             sql_statements.append(
                 f'GRANT {privilege} ON {obj_type} IN SCHEMA {_quote_ident(schema)} TO "{role}";'
             )
 
-            def_obj_type = "TABLES" if resource_type == "table" else "MODELS"
-            sql_statements.append(
-                f'ALTER DEFAULT PRIVILEGES IN SCHEMA {_quote_ident(schema)} GRANT {privilege} ON {def_obj_type} TO "{role}";'
-            )
+            if resource_type == "table":
+                sql_statements.append(
+                    f'ALTER DEFAULT PRIVILEGES IN SCHEMA {_quote_ident(schema)} GRANT {privilege} ON TABLES TO "{role}";'
+                )
         else:
             obj_type = "TABLE" if resource_type == "table" else "MODEL"
             sql_statements.append(
