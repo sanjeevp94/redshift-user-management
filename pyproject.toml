@@ -1,0 +1,17 @@
+[project]
+name = "rum"
+version = "0.1.0"
+description = "Declarative Redshift User Manager"
+requires-python = ">=3.10"
+dependencies = [
+    "fire>=0.6.0",
+    "rich>=13.7.1",
+    "pyyaml>=6.0.1",
+    "psycopg2-binary>=2.9.9",
+]
+
+[project.scripts]
+rum = "rum.cli:main"
+
+[tool.ruff]
+line-length = 100

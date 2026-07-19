@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    environment {
+        // Assume mapping credentials to specific environment variables
+        REDSHIFT_USER = credentials("rs-user-uat")
+        REDSHIFT_PASSWORD = credentials("rs-password-uat")
+    }
+
+    parameters {
+        choice(name: 'ACTION', choices: ['plan', 'apply'], description: 'Choose whether to just plan or apply the configuration.')
+    }
+
+    stages {
+        stage('Setup') {
+            steps {
+                sh 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+                sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv sync'
+            }
+        }
+
+        stage('Pre-commit Checks') {
+            steps {
+                sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv tool install prek'
+                sh 'export PATH="$HOME/.cargo/bin:$PATH" && prek run --all-files'
+            }
+        }
+
+        stage('Plan') {
+            steps {
+                sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv run rum plan --config=deploy/uat/config.yaml'
+            }
+        }
+
+        stage('Apply') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
+            steps {
+                sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv run rum apply --config=deploy/uat/config.yaml --auto_approve=True'
+            }
+        }
+    }
+}
