@@ -11,7 +11,15 @@ def _quote_ident(ident: str) -> str:
 
 
 def generate_random_password(length=15):
-    alphabet = string.ascii_letters + string.digits + string.punctuation.replace("'", "")
+    # Redshift passwords cannot contain ', ", \, /, @, or space.
+    safe_punctuation = (
+        string.punctuation.replace("'", "")
+        .replace('"', "")
+        .replace("\\", "")
+        .replace("/", "")
+        .replace("@", "")
+    )
+    alphabet = string.ascii_letters + string.digits + safe_punctuation
     while True:
         password = "".join(secrets.choice(alphabet) for i in range(length))
         if (
@@ -91,9 +99,13 @@ def calculate_diff(
                 f'ALTER DEFAULT PRIVILEGES IN SCHEMA {_quote_ident(schema)} REVOKE {privilege} ON {obj_type} FROM "{role}";'
             )
 
-    # 2. Revoke current table privileges.
+    # 2. Revoke current privileges.
     for role, resource_type, entity, privilege in role_grants_to_revoke:
-        if entity.endswith(".*"):
+        if resource_type == "schema":
+            sql_statements.append(
+                f'REVOKE {privilege} ON SCHEMA {_quote_ident(entity)} FROM "{role}";'
+            )
+        elif entity.endswith(".*"):
             schema = entity.split(".")[0]
             obj_type = "ALL TABLES" if resource_type == "table" else "ALL MODELS"
             sql_statements.append(

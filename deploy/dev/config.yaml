@@ -1,39 +1,40 @@
-target:
-  host: "dev-cluster.abcdefg.us-east-1.redshift.amazonaws.com"
-  port: 5439
-  database: "dev_db"
-
-users:
-  jane_doe:
+clusters:
+  - target:
+      host: "dev-cluster-1.abcdefg.us-east-1.redshift.amazonaws.com"
+      port: 5439
+      database: "dev_db"
+    users:
+      jane_doe:
+        roles:
+          - marketing_analyst
     roles:
-      - marketing_analyst
-
-roles:
-  marketing_analyst:
+      marketing_analyst:
+        permissions:
+          - read_campaigns
     permissions:
-      - read_campaigns
-      - models_access
-      - full_schema_access
+      read_campaigns:
+        resource_type: table
+        privileges:
+          - SELECT
+        entities:
+          - "marketing.campaigns"
 
-permissions:
-  read_campaigns:
-    resource_type: table
-    privileges:
-      - SELECT
-    entities:
-      - "marketing.campaigns"   # Specific table
-      - "sales.*"               # All tables in schema and default privileges
-
-  models_access:
-    resource_type: model
-    privileges:
-      - EXECUTE
-    entities:
-      - "ml.*"                  # All models in schema
-
-  full_schema_access:
-    resource_type: schema
-    privileges:
-      - USAGE
-    entities:
-      - "analytics"
+  - target:
+      host: "dev-cluster-2.abcdefg.us-east-1.redshift.amazonaws.com"
+      port: 5439
+      database: "dev_db"
+    users:
+      bob_smith:
+        roles:
+          - data_scientist
+    roles:
+      data_scientist:
+        permissions:
+          - read_all_models
+    permissions:
+      read_all_models:
+        resource_type: model
+        privileges:
+          - EXECUTE
+        entities:
+          - "ml.*"

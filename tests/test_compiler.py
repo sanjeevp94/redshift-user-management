@@ -3,43 +3,75 @@ import os
 from src.rum.compiler import compile_state
 
 
-def test_compiler_extracts_target_and_prefixes_correctly():
+def test_compiler_extracts_clusters_and_prefixes_correctly():
     config_content = """
-target:
-  host: "test-host"
-  port: 5439
-  database: "test_db"
-
-users:
-  jane:
+clusters:
+  - target:
+      host: "test-host-1"
+      port: 5439
+      database: "test_db_1"
+    users:
+      jane:
+        roles:
+          - analyst
     roles:
-      - analyst
-
-roles:
-  analyst:
+      analyst:
+        permissions:
+          - read_data
     permissions:
-      - read_data
-
-permissions:
-  read_data:
-    resource_type: table
-    privileges:
-      - SELECT
-    entities:
-      - "sales.*"
+      read_data:
+        resource_type: table
+        privileges:
+          - SELECT
+        entities:
+          - "sales.*"
+  - target:
+      host: "test-host-2"
+      port: 5439
+      database: "test_db_2"
+    users:
+      bob:
+        roles:
+          - engineer
+    roles:
+      engineer:
+        permissions:
+          - write_data
+    permissions:
+      write_data:
+        resource_type: table
+        privileges:
+          - INSERT
+        entities:
+          - "marketing.events"
 """
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
         f.write(config_content)
         temp_path = f.name
 
     try:
-        target, users, roles, user_roles, role_grants = compile_state(temp_path)
+        cluster_configs = compile_state(temp_path)
 
-        assert target == {"host": "test-host", "port": 5439, "database": "test_db"}
-        assert users == {"rum_user_jane"}
-        assert roles == {"rum_role_analyst"}
-        assert user_roles == {("rum_user_jane", "rum_role_analyst")}
-        assert role_grants == {("rum_role_analyst", "table", "sales.*", "SELECT")}
+        assert len(cluster_configs) == 2
+
+        # Check Cluster 1
+        c1 = cluster_configs[0]
+        assert c1["target_info"] == {"host": "test-host-1", "port": 5439, "database": "test_db_1"}
+        assert c1["desired_users"] == {"rum_user_jane"}
+        assert c1["desired_roles"] == {"rum_role_analyst"}
+        assert c1["desired_user_roles"] == {("rum_user_jane", "rum_role_analyst")}
+        assert c1["desired_role_grants"] == {("rum_role_analyst", "table", "sales.*", "SELECT")}
+
+        # Check Cluster 2
+        c2 = cluster_configs[1]
+        assert c2["target_info"] == {"host": "test-host-2", "port": 5439, "database": "test_db_2"}
+        assert c2["desired_users"] == {"rum_user_bob"}
+        assert c2["desired_roles"] == {"rum_role_engineer"}
+        assert c2["desired_user_roles"] == {("rum_user_bob", "rum_role_engineer")}
+        assert c2["desired_role_grants"] == {
+            ("rum_role_engineer", "table", "marketing.events", "INSERT")
+        }
+
     finally:
         os.remove(temp_path)
 
@@ -51,12 +83,14 @@ def test_compiler_empty_config():
         temp_path = f.name
 
     try:
-        target, users, roles, user_roles, role_grants = compile_state(temp_path)
+        cluster_configs = compile_state(temp_path)
 
-        assert target == {}
-        assert users == set()
-        assert roles == set()
-        assert user_roles == set()
-        assert role_grants == set()
+        assert len(cluster_configs) == 1
+        c = cluster_configs[0]
+        assert c["target_info"] == {}
+        assert c["desired_users"] == set()
+        assert c["desired_roles"] == set()
+        assert c["desired_user_roles"] == set()
+        assert c["desired_role_grants"] == set()
     finally:
         os.remove(temp_path)
