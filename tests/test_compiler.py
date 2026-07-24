@@ -76,6 +76,43 @@ clusters:
         os.remove(temp_path)
 
 
+def test_compiler_targeted_cluster():
+    config_content = """
+clusters:
+  - target:
+      host: "dev-cluster-1"
+      port: 5439
+      database: "dev_db_1"
+    users:
+      jane:
+        roles:
+          - analyst
+  - target:
+      host: "dev-cluster-2"
+      port: 5439
+      database: "dev_db_2"
+    users:
+      bob:
+        roles:
+          - analyst
+"""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
+        f.write(config_content)
+        temp_path = f.name
+
+    try:
+        cluster_configs = compile_state(temp_path, target_host="dev-cluster-2")
+
+        # It should filter out cluster-1 and only compile cluster-2
+        assert len(cluster_configs) == 1
+
+        c = cluster_configs[0]
+        assert c["target_info"] == {"host": "dev-cluster-2", "port": 5439, "database": "dev_db_2"}
+        assert c["desired_users"] == {"rum_user_bob"}
+    finally:
+        os.remove(temp_path)
+
+
 def test_compiler_empty_config():
     config_content = ""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:

@@ -9,6 +9,7 @@ pipeline {
 
     parameters {
         choice(name: 'ACTION', choices: ['plan', 'apply'], description: 'Choose whether to just plan or apply the configuration.')
+        string(name: 'TARGET_CLUSTER', defaultValue: '', description: 'Optional: Filter execution to a specific target host (e.g., uat-cluster). Leaves blank to execute against all clusters.')
     }
 
     stages {
@@ -28,13 +29,19 @@ pipeline {
 
         stage('Liquibase Migrations') {
             steps {
-                sh 'python3 scripts/run_liquibase.py deploy/uat/config.yaml deploy/uat/changelog.yaml'
+                script {
+                    def targetArg = params.TARGET_CLUSTER ? "--target=${params.TARGET_CLUSTER}" : ""
+                    sh "python3 scripts/run_liquibase.py deploy/uat/config.yaml deploy/uat/changelog.yaml ${targetArg}"
+                }
             }
         }
 
         stage('Plan Permissions') {
             steps {
-                sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv run rum plan --config=deploy/uat/config.yaml'
+                script {
+                    def targetArg = params.TARGET_CLUSTER ? "--target=${params.TARGET_CLUSTER}" : ""
+                    sh "export PATH=\"\$HOME/.cargo/bin:\$PATH\" && uv run rum plan --config=deploy/uat/config.yaml ${targetArg}"
+                }
             }
         }
 
@@ -43,7 +50,10 @@ pipeline {
                 expression { params.ACTION == 'apply' }
             }
             steps {
-                sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv run rum apply --config=deploy/uat/config.yaml --auto_approve=True'
+                script {
+                    def targetArg = params.TARGET_CLUSTER ? "--target=${params.TARGET_CLUSTER}" : ""
+                    sh "export PATH=\"\$HOME/.cargo/bin:\$PATH\" && uv run rum apply --config=deploy/uat/config.yaml --auto_approve=True ${targetArg}"
+                }
             }
         }
     }

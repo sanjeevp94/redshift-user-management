@@ -9,10 +9,11 @@ console = Console()
 
 
 class RumCLI:
-    def _get_plan(self, config: str):
+    def _get_plan(self, config: str, target: str = None):
         # 1. Compile Desired State
-        console.print(f"[bold blue]Loading configuration from {config}...[/bold blue]")
-        cluster_configs = compile_state(config)
+        target_msg = f" for target {target}" if target else ""
+        console.print(f"[bold blue]Loading configuration from {config}{target_msg}...[/bold blue]")
+        cluster_configs = compile_state(config, target_host=target)
 
         target_plans = []
 
@@ -74,9 +75,9 @@ class RumCLI:
         else:
             console.print(f"[bold green]  {display_stmt}[/bold green]")
 
-    def plan(self, config: str = "config.yaml"):
+    def plan(self, config: str = "config.yaml", target: str = None):
         """Show the generated SQL plan based on config against live state."""
-        target_plans = self._get_plan(config)
+        target_plans = self._get_plan(config, target)
 
         for plan_data in target_plans:
             target_name = plan_data["target_info"].get("host", "Unknown Target")
@@ -93,9 +94,9 @@ class RumCLI:
             for stmt in sql_statements:
                 self._print_statement(stmt)
 
-    def apply(self, config: str = "config.yaml", auto_approve: bool = False):
+    def apply(self, config: str = "config.yaml", auto_approve: bool = False, target: str = None):
         """Apply the generated SQL plan to the database."""
-        target_plans = self._get_plan(config)
+        target_plans = self._get_plan(config, target)
 
         # Print all plans first
         has_changes = False

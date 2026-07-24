@@ -9,6 +9,7 @@ pipeline {
 
     parameters {
         choice(name: 'ACTION', choices: ['plan', 'apply'], description: 'Choose whether to just plan or apply the configuration.')
+        string(name: 'TARGET_CLUSTER', defaultValue: '', description: 'Optional: Filter execution to a specific target host (e.g., dev-cluster-1). Leaves blank to execute against all clusters.')
     }
 
     stages {
@@ -28,15 +29,21 @@ pipeline {
 
         stage('Liquibase Migrations') {
             steps {
-                // Ensure Liquibase is available or installed here depending on agent config.
-                // Action gets passed as ACTION env var natively by Jenkins parameters.
-                sh 'python3 scripts/run_liquibase.py deploy/dev/config.yaml deploy/dev/changelog.yaml'
+                script {
+                    def targetArg = params.TARGET_CLUSTER ? "--target=${params.TARGET_CLUSTER}" : ""
+                    // Ensure Liquibase is available or installed here depending on agent config.
+                    // Action gets passed as ACTION env var natively by Jenkins parameters.
+                    sh "python3 scripts/run_liquibase.py deploy/dev/config.yaml deploy/dev/changelog.yaml ${targetArg}"
+                }
             }
         }
 
         stage('Plan Permissions') {
             steps {
-                sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv run rum plan --config=deploy/dev/config.yaml'
+                script {
+                    def targetArg = params.TARGET_CLUSTER ? "--target=${params.TARGET_CLUSTER}" : ""
+                    sh "export PATH=\"\$HOME/.cargo/bin:\$PATH\" && uv run rum plan --config=deploy/dev/config.yaml ${targetArg}"
+                }
             }
         }
 
@@ -45,7 +52,10 @@ pipeline {
                 expression { params.ACTION == 'apply' }
             }
             steps {
-                sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv run rum apply --config=deploy/dev/config.yaml --auto_approve=True'
+                script {
+                    def targetArg = params.TARGET_CLUSTER ? "--target=${params.TARGET_CLUSTER}" : ""
+                    sh "export PATH=\"\$HOME/.cargo/bin:\$PATH\" && uv run rum apply --config=deploy/dev/config.yaml --auto_approve=True ${targetArg}"
+                }
             }
         }
     }

@@ -3,9 +3,10 @@ import os
 import sys
 import yaml
 import subprocess
+import argparse
 
 
-def run_liquibase(config_path, changelog_path, action):
+def run_liquibase(config_path, changelog_path, action, target_host=None):
     with open(config_path, "r") as f:
         config = yaml.safe_load(f) or {}
 
@@ -22,6 +23,10 @@ def run_liquibase(config_path, changelog_path, action):
             target_info = cluster_block["targets"][0]
 
         host = target_info.get("host")
+
+        if target_host and host != target_host:
+            continue
+
         port = target_info.get("port", "5439")
         db = target_info.get("database")
 
@@ -51,12 +56,14 @@ def run_liquibase(config_path, changelog_path, action):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: run_liquibase.py <config_path> <changelog_path>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Run Liquibase migrations for Redshift clusters.")
+    parser.add_argument("config_path", help="Path to config.yaml")
+    parser.add_argument("changelog_path", help="Path to changelog.yaml")
+    parser.add_argument(
+        "--target", help="Specific target host to run migrations against", default=None
+    )
 
-    config_path = sys.argv[1]
-    changelog_path = sys.argv[2]
+    args = parser.parse_args()
 
     # In jenkins ACTION is typically 'plan' or 'apply'
     jenkins_action = os.environ.get("ACTION", "plan")
@@ -67,4 +74,4 @@ if __name__ == "__main__":
     else:
         lb_action = "updateSQL"  # Dry run equivalent in liquibase
 
-    run_liquibase(config_path, changelog_path, lb_action)
+    run_liquibase(args.config_path, args.changelog_path, lb_action, args.target)

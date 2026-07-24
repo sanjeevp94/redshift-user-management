@@ -3,8 +3,9 @@ from typing import Set, Tuple, Dict, Any, List
 
 
 class Compiler:
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, target_host: str = None):
         self.config_path = config_path
+        self.target_host = target_host
 
     def compile(self) -> List[Dict[str, Any]]:
         with open(self.config_path, "r") as f:
@@ -23,6 +24,9 @@ class Compiler:
             target_info = cluster_block.get("target", {})
             if not target_info and "targets" in cluster_block and cluster_block["targets"]:
                 target_info = cluster_block["targets"][0]
+
+            if self.target_host and target_info.get("host") != self.target_host:
+                continue
 
             desired_users: Set[str] = set()
             desired_roles: Set[str] = set()
@@ -71,6 +75,6 @@ class Compiler:
         return cluster_configs
 
 
-def compile_state(config_path: str) -> List[Dict[str, Any]]:
-    compiler = Compiler(config_path)
+def compile_state(config_path: str, target_host: str = None) -> List[Dict[str, Any]]:
+    compiler = Compiler(config_path, target_host)
     return compiler.compile()
