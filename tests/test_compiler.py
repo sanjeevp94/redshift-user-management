@@ -1,6 +1,6 @@
 import tempfile
 import os
-from src.rum.compiler import compile_state
+from rum.compiler import compile_state
 
 
 def test_compiler_extracts_clusters_and_prefixes_correctly():

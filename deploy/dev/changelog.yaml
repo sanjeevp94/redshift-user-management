@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - property:
+      name: environment_name
+      value: dev
+  - property:
+      name: datashare_name
+      value: dev_sales_share
+  - includeAll:
+      path: migrations/
+      relativeToChangelogFile: true

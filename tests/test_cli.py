@@ -1,11 +1,11 @@
 from unittest.mock import patch, MagicMock
-from src.rum.cli import RumCLI
+from rum.cli import RumCLI
 
 
-@patch("src.rum.cli.compile_state")
-@patch("src.rum.cli.get_connection")
-@patch("src.rum.cli.fetch_live_state")
-@patch("src.rum.cli.calculate_diff")
+@patch("rum.cli.compile_state")
+@patch("rum.cli.get_connection")
+@patch("rum.cli.fetch_live_state")
+@patch("rum.cli.calculate_diff")
 def test_cli_plan_redacts_password(mock_calc, mock_fetch, mock_conn, mock_compile, capsys):
     mock_compile.return_value = [
         {
@@ -32,10 +32,10 @@ def test_cli_plan_redacts_password(mock_calc, mock_fetch, mock_conn, mock_compil
     assert "S3cr3t" not in captured.out
 
 
-@patch("src.rum.cli.compile_state")
-@patch("src.rum.cli.get_connection")
-@patch("src.rum.cli.fetch_live_state")
-@patch("src.rum.cli.calculate_diff")
+@patch("rum.cli.compile_state")
+@patch("rum.cli.get_connection")
+@patch("rum.cli.fetch_live_state")
+@patch("rum.cli.calculate_diff")
 def test_cli_apply_auto_approve(mock_calc, mock_fetch, mock_conn, mock_compile):
     mock_compile.return_value = [
         {

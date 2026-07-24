@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock
-from src.rum.redshift import fetch_live_state
+from rum.redshift import fetch_live_state
 
 
 def test_fetch_live_state():

@@ -26,13 +26,19 @@ pipeline {
             }
         }
 
-        stage('Plan') {
+        stage('Liquibase Migrations') {
+            steps {
+                sh 'python3 scripts/run_liquibase.py deploy/prod/config.yaml deploy/prod/changelog.yaml'
+            }
+        }
+
+        stage('Plan Permissions') {
             steps {
                 sh 'export PATH="$HOME/.cargo/bin:$PATH" && uv run rum plan --config=deploy/prod/config.yaml'
             }
         }
 
-        stage('Apply') {
+        stage('Apply Permissions') {
             when {
                 expression { params.ACTION == 'apply' }
             }

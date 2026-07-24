@@ -1,4 +1,4 @@
-from src.rum.diff import calculate_diff
+from rum.diff import calculate_diff
 
 
 def test_diff_engine_calculates_correctly():
