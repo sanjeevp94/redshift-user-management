@@ -7,7 +7,14 @@ def _quote_ident(ident: str) -> str:
     """Safely quote identifiers."""
     # Note: If it's something like `schema.table`, we want `"schema"."table"`
     parts = ident.split(".")
-    return ".".join(f'"{p}"' for p in parts)
+    escaped_parts = [p.replace('"', '""') for p in parts]
+    return ".".join(f'"{p}"' for p in escaped_parts)
+
+
+def _quote_simple_ident(ident: str) -> str:
+    """Safely quote identifiers that do not contain schema components, like users and roles."""
+    escaped = ident.replace('"', '""')
+    return f'"{escaped}"'
 
 
 def generate_random_password(length=15):
@@ -96,57 +103,61 @@ def calculate_diff(
             # Assumes table or model
             obj_type = "TABLES" if resource_type == "table" else "MODELS"
             sql_statements.append(
-                f'ALTER DEFAULT PRIVILEGES IN SCHEMA {_quote_ident(schema)} REVOKE {privilege} ON {obj_type} FROM "{role}";'
+                f"ALTER DEFAULT PRIVILEGES IN SCHEMA {_quote_ident(schema)} REVOKE {privilege} ON {obj_type} FROM {_quote_simple_ident(role)};"
             )
 
     # 2. Revoke current privileges.
     for role, resource_type, entity, privilege in role_grants_to_revoke:
         if resource_type == "schema":
             sql_statements.append(
-                f'REVOKE {privilege} ON SCHEMA {_quote_ident(entity)} FROM "{role}";'
+                f"REVOKE {privilege} ON SCHEMA {_quote_ident(entity)} FROM {_quote_simple_ident(role)};"
             )
         elif entity.endswith(".*"):
             schema = entity.split(".")[0]
             obj_type = "ALL TABLES" if resource_type == "table" else "ALL MODELS"
             sql_statements.append(
-                f'REVOKE {privilege} ON {obj_type} IN SCHEMA {_quote_ident(schema)} FROM "{role}";'
+                f"REVOKE {privilege} ON {obj_type} IN SCHEMA {_quote_ident(schema)} FROM {_quote_simple_ident(role)};"
             )
         else:
             obj_type = "TABLE" if resource_type == "table" else "MODEL"
             sql_statements.append(
-                f'REVOKE {privilege} ON {obj_type} {_quote_ident(entity)} FROM "{role}";'
+                f"REVOKE {privilege} ON {obj_type} {_quote_ident(entity)} FROM {_quote_simple_ident(role)};"
             )
 
     # 3. Revoke roles from users.
     for user, role in user_roles_to_revoke:
-        sql_statements.append(f'REVOKE ROLE "{role}" FROM "{user}";')
+        sql_statements.append(
+            f"REVOKE ROLE {_quote_simple_ident(role)} FROM {_quote_simple_ident(user)};"
+        )
 
     # 4. Drop users.
     for user in users_to_drop:
-        sql_statements.append(f'DROP USER "{user}";')
+        sql_statements.append(f"DROP USER {_quote_simple_ident(user)};")
 
     # 5. Drop roles.
     for role in roles_to_drop:
-        sql_statements.append(f'DROP ROLE "{role}";')
+        sql_statements.append(f"DROP ROLE {_quote_simple_ident(role)};")
 
     # 6. Create users.
     for user in users_to_create:
         password = generate_random_password()
-        sql_statements.append(f"CREATE USER \"{user}\" PASSWORD '{password}';")
+        sql_statements.append(f"CREATE USER {_quote_simple_ident(user)} PASSWORD '{password}';")
 
     # 7. Create roles.
     for role in roles_to_create:
-        sql_statements.append(f'CREATE ROLE "{role}";')
+        sql_statements.append(f"CREATE ROLE {_quote_simple_ident(role)};")
 
     # 8. Grant roles to users.
     for user, role in user_roles_to_grant:
-        sql_statements.append(f'GRANT ROLE "{role}" TO "{user}";')
+        sql_statements.append(
+            f"GRANT ROLE {_quote_simple_ident(role)} TO {_quote_simple_ident(user)};"
+        )
 
     # 9. Grant schema privileges (including implicitly added USAGE).
     for role, resource_type, entity, privilege in role_grants_to_grant:
         if resource_type == "schema":
             sql_statements.append(
-                f'GRANT {privilege} ON SCHEMA {_quote_ident(entity)} TO "{role}";'
+                f"GRANT {privilege} ON SCHEMA {_quote_ident(entity)} TO {_quote_simple_ident(role)};"
             )
 
     # 10. Grant privileges (and alter default privileges for .* entities).
@@ -157,17 +168,17 @@ def calculate_diff(
             schema = entity.split(".")[0]
             obj_type = "ALL TABLES" if resource_type == "table" else "ALL MODELS"
             sql_statements.append(
-                f'GRANT {privilege} ON {obj_type} IN SCHEMA {_quote_ident(schema)} TO "{role}";'
+                f"GRANT {privilege} ON {obj_type} IN SCHEMA {_quote_ident(schema)} TO {_quote_simple_ident(role)};"
             )
 
             if resource_type == "table":
                 sql_statements.append(
-                    f'ALTER DEFAULT PRIVILEGES IN SCHEMA {_quote_ident(schema)} GRANT {privilege} ON TABLES TO "{role}";'
+                    f"ALTER DEFAULT PRIVILEGES IN SCHEMA {_quote_ident(schema)} GRANT {privilege} ON TABLES TO {_quote_simple_ident(role)};"
                 )
         else:
             obj_type = "TABLE" if resource_type == "table" else "MODEL"
             sql_statements.append(
-                f'GRANT {privilege} ON {obj_type} {_quote_ident(entity)} TO "{role}";'
+                f"GRANT {privilege} ON {obj_type} {_quote_ident(entity)} TO {_quote_simple_ident(role)};"
             )
 
     # Deduplicate preserving the first occurrence

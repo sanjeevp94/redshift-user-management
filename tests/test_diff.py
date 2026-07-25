@@ -74,3 +74,41 @@ def test_diff_engine_calculates_correctly():
 
     # We should NOT be revoking sales.events
     assert not any('REVOKE SELECT ON TABLE "sales"."events"' in s for s in diff)
+
+
+def test_sql_injection_prevention():
+    malicious_user = 'rum_user_bad" OR 1=1 --'
+    malicious_role = 'rum_role_bad"; DROP TABLE users; --'
+
+    desired_users = {malicious_user}
+    desired_roles = {malicious_role}
+    desired_user_roles = {(malicious_user, malicious_role)}
+    desired_role_grants = {
+        (malicious_role, "table", 'sales".events', "SELECT"),
+    }
+
+    diff = calculate_diff(
+        desired_users,
+        desired_roles,
+        desired_user_roles,
+        desired_role_grants,
+        set(),
+        set(),
+        set(),
+        set(),
+    )
+
+    actual_diff = set(diff)
+
+    # Check that double quotes are correctly escaped as ""
+    expected_user = '"rum_user_bad"" OR 1=1 --"'
+    expected_role = '"rum_role_bad""; DROP TABLE users; --"'
+    expected_table = '"sales"""."events"'
+
+    create_users = [s for s in diff if s.startswith("CREATE USER")]
+    assert len(create_users) == 1
+    assert expected_user in create_users[0]
+
+    assert f"CREATE ROLE {expected_role};" in actual_diff
+    assert f"GRANT ROLE {expected_role} TO {expected_user};" in actual_diff
+    assert f"GRANT SELECT ON TABLE {expected_table} TO {expected_role};" in actual_diff
