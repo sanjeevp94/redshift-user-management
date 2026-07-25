@@ -3,13 +3,13 @@ from src.rum.sync import build_cluster_yaml_block
 
 def test_sync_build_cluster_yaml_block():
     target_info = {"host": "test-cluster", "port": 5439, "database": "dev"}
-    live_users = {"rum_user_john", "rum_user_jane"}
-    live_roles = {"rum_role_analyst", "rum_role_admin"}
-    live_user_roles = {("rum_user_john", "rum_role_analyst"), ("rum_user_jane", "rum_role_admin")}
+    live_users = {"john", "jane"}
+    live_roles = {"analyst", "admin"}
+    live_user_roles = {("john", "analyst"), ("jane", "admin")}
     live_role_grants = {
-        ("rum_role_analyst", "table", "sales.events", "SELECT"),
-        ("rum_role_analyst", "schema", "sales", "USAGE"),
-        ("rum_role_admin", "model", "ml.*", "ALL"),
+        ("analyst", "table", "sales.events", "SELECT"),
+        ("analyst", "schema", "sales", "USAGE"),
+        ("admin", "model", "ml.*", "ALL"),
     }
 
     yaml_dict = build_cluster_yaml_block(
@@ -19,7 +19,7 @@ def test_sync_build_cluster_yaml_block():
     # Validate target
     assert yaml_dict["target"] == target_info
 
-    # Validate users mapped to roles correctly and prefixes stripped
+    # Validate users mapped to roles correctly
     assert yaml_dict["users"]["john"]["roles"] == ["analyst"]
     assert yaml_dict["users"]["jane"]["roles"] == ["admin"]
 

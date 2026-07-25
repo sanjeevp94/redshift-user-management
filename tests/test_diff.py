@@ -2,34 +2,34 @@ from rum.diff import calculate_diff
 
 
 def test_diff_engine_calculates_correctly():
-    desired_users = {"rum_user_jane", "rum_user_new"}
-    desired_roles = {"rum_role_analyst"}
+    desired_users = {"jane", "new"}
+    desired_roles = {"analyst"}
     desired_user_roles = {
-        ("rum_user_jane", "rum_role_analyst"),
-        ("rum_user_new", "rum_role_analyst"),
+        ("jane", "analyst"),
+        ("new", "analyst"),
     }
     desired_role_grants = {
-        ("rum_role_analyst", "table", "sales.*", "SELECT"),
-        ("rum_role_analyst", "schema", "analytics", "USAGE"),
+        ("analyst", "table", "sales.*", "SELECT"),
+        ("analyst", "schema", "analytics", "USAGE"),
     }
 
-    live_users = {"rum_user_jane", "rum_user_old"}
-    live_roles = {"rum_role_analyst", "rum_role_old"}
-    live_user_roles = {("rum_user_jane", "rum_role_analyst"), ("rum_user_old", "rum_role_old")}
+    live_users = {"jane", "old"}
+    live_roles = {"analyst", "old"}
+    live_user_roles = {("jane", "analyst"), ("old", "old")}
     live_role_grants = {
         (
-            "rum_role_analyst",
+            "analyst",
             "table",
             "sales.events",
             "SELECT",
         ),  # Should NOT be revoked because desired has sales.*
         (
-            "rum_role_analyst",
+            "analyst",
             "schema",
             "sales",
             "USAGE",
         ),  # Will be kept via implicit schema grant from diff engine
-        ("rum_role_old", "table", "old.*", "SELECT"),
+        ("old", "table", "old.*", "SELECT"),
     }
 
     diff = calculate_diff(
@@ -49,26 +49,26 @@ def test_diff_engine_calculates_correctly():
     actual_diff = set(diff)
 
     assert (
-        'ALTER DEFAULT PRIVILEGES IN SCHEMA "old" REVOKE SELECT ON TABLES FROM "rum_role_old";'
+        'ALTER DEFAULT PRIVILEGES IN SCHEMA "old" REVOKE SELECT ON TABLES FROM "old";'
         in actual_diff
     )
-    assert 'REVOKE SELECT ON ALL TABLES IN SCHEMA "old" FROM "rum_role_old";' in actual_diff
-    assert 'REVOKE ROLE "rum_role_old" FROM "rum_user_old";' in actual_diff
-    assert 'DROP USER "rum_user_old";' in actual_diff
-    assert 'DROP ROLE "rum_role_old";' in actual_diff
+    assert 'REVOKE SELECT ON ALL TABLES IN SCHEMA "old" FROM "old";' in actual_diff
+    assert 'REVOKE ROLE "old" FROM "old";' in actual_diff
+    assert 'DROP USER "old";' in actual_diff
+    assert 'DROP ROLE "old";' in actual_diff
 
     create_users = [s for s in diff if s.startswith("CREATE USER")]
     assert len(create_users) == 1
-    assert "rum_user_new" in create_users[0]
+    assert "new" in create_users[0]
 
-    assert 'GRANT ROLE "rum_role_analyst" TO "rum_user_new";' in actual_diff
+    assert 'GRANT ROLE "analyst" TO "new";' in actual_diff
 
-    assert 'GRANT USAGE ON SCHEMA "analytics" TO "rum_role_analyst";' in actual_diff
+    assert 'GRANT USAGE ON SCHEMA "analytics" TO "analyst";' in actual_diff
     # Implicit schema grants are only added if NOT present in live state. sales was already in live state.
-    assert 'GRANT USAGE ON SCHEMA "sales" TO "rum_role_analyst";' not in actual_diff
-    assert 'GRANT SELECT ON ALL TABLES IN SCHEMA "sales" TO "rum_role_analyst";' in actual_diff
+    assert 'GRANT USAGE ON SCHEMA "sales" TO "analyst";' not in actual_diff
+    assert 'GRANT SELECT ON ALL TABLES IN SCHEMA "sales" TO "analyst";' in actual_diff
     assert (
-        'ALTER DEFAULT PRIVILEGES IN SCHEMA "sales" GRANT SELECT ON TABLES TO "rum_role_analyst";'
+        'ALTER DEFAULT PRIVILEGES IN SCHEMA "sales" GRANT SELECT ON TABLES TO "analyst";'
         in actual_diff
     )
 

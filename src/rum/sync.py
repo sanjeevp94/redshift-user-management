@@ -8,28 +8,19 @@ def build_cluster_yaml_block(
     live_user_roles: Set[Tuple[str, str]],
     live_role_grants: Set[Tuple[str, str, str, str]],
 ) -> Dict[str, Any]:
-    # Strip rum_ prefixes for the YAML representations
-    def strip_prefix(name: str, prefix: str) -> str:
-        if name.startswith(prefix):
-            return name[len(prefix) :]
-        return name
-
     cluster_block = {"target": target_info, "users": {}, "roles": {}, "permissions": {}}
 
     # Process Users and Assigned Roles
     user_roles_map: Dict[str, List[str]] = {}
     for user, role in live_user_roles:
-        clean_user = strip_prefix(user, "rum_user_")
-        clean_role = strip_prefix(role, "rum_role_")
-        if clean_user not in user_roles_map:
-            user_roles_map[clean_user] = []
-        user_roles_map[clean_user].append(clean_role)
+        if user not in user_roles_map:
+            user_roles_map[user] = []
+        user_roles_map[user].append(role)
 
     for user in live_users:
-        clean_user = strip_prefix(user, "rum_user_")
-        cluster_block["users"][clean_user] = {}
-        if clean_user in user_roles_map:
-            cluster_block["users"][clean_user]["roles"] = sorted(user_roles_map[clean_user])
+        cluster_block["users"][user] = {}
+        if user in user_roles_map:
+            cluster_block["users"][user]["roles"] = sorted(user_roles_map[user])
 
     # To rebuild permissions efficiently, we need to group grants by (resource_type, privileges, entities)
     # But because privileges and entities can be grouped in YAML, we will generate a unique permission name
@@ -42,15 +33,13 @@ def build_cluster_yaml_block(
     role_entity_map: Dict[str, Set[Tuple[str, str]]] = {}
 
     for role, resource_type, entity, privilege in live_role_grants:
-        clean_role = strip_prefix(role, "rum_role_")
-
         if (resource_type, entity) not in entity_privs_map:
             entity_privs_map[(resource_type, entity)] = set()
         entity_privs_map[(resource_type, entity)].add(privilege)
 
-        if clean_role not in role_entity_map:
-            role_entity_map[clean_role] = set()
-        role_entity_map[clean_role].add((resource_type, entity))
+        if role not in role_entity_map:
+            role_entity_map[role] = set()
+        role_entity_map[role].add((resource_type, entity))
 
     # Build Permissions Dictionary
     # We will name permissions like: <resource_type>_<safe_entity_name>
@@ -69,14 +58,13 @@ def build_cluster_yaml_block(
 
     # Build Roles Dictionary
     for role in live_roles:
-        clean_role = strip_prefix(role, "rum_role_")
-        cluster_block["roles"][clean_role] = {}
+        cluster_block["roles"][role] = {}
 
-        if clean_role in role_entity_map:
+        if role in role_entity_map:
             perm_list = []
-            for res_ent in role_entity_map[clean_role]:
+            for res_ent in role_entity_map[role]:
                 perm_list.append(perm_name_mapping[res_ent])
-            cluster_block["roles"][clean_role]["permissions"] = sorted(perm_list)
+            cluster_block["roles"][role]["permissions"] = sorted(perm_list)
 
     # Cleanup empty blocks for cleaner YAML output
     if not cluster_block["users"]:

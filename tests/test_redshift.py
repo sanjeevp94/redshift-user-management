@@ -10,27 +10,27 @@ def test_fetch_live_state():
     # Simulate DB rows returned for 6 queries
     def fetchall_side_effect():
         # 1. query pg_user
-        yield [("rum_user_john",)]
+        yield [("john",)]
         # 2. query svv_roles
-        yield [("rum_role_engineer",)]
+        yield [("engineer",)]
         # 3. query svv_role_grants
-        yield [("rum_user_john", "rum_role_engineer")]
+        yield [("john", "engineer")]
         # 4. query svv_relation_privileges
-        yield [("rum_role_engineer", "engineering", "deployments", "INSERT")]
+        yield [("engineer", "engineering", "deployments", "INSERT")]
         # 5. query svv_default_privileges
-        yield [("rum_role_engineer", "engineering", "SELECT", "table")]
+        yield [("engineer", "engineering", "SELECT", "table")]
         # 6. query svv_schema_privileges
-        yield [("rum_role_engineer", "engineering", "USAGE")]
+        yield [("engineer", "engineering", "USAGE")]
 
     mock_cur.fetchall.side_effect = fetchall_side_effect()
 
     users, roles, user_roles, role_grants = fetch_live_state(mock_conn)
 
-    assert users == {"rum_user_john"}
-    assert roles == {"rum_role_engineer"}
-    assert user_roles == {("rum_user_john", "rum_role_engineer")}
+    assert users == {"john"}
+    assert roles == {"engineer"}
+    assert user_roles == {("john", "engineer")}
     assert role_grants == {
-        ("rum_role_engineer", "table", "engineering.deployments", "INSERT"),
-        ("rum_role_engineer", "table", "engineering.*", "SELECT"),
-        ("rum_role_engineer", "schema", "engineering", "USAGE"),
+        ("engineer", "table", "engineering.deployments", "INSERT"),
+        ("engineer", "table", "engineering.*", "SELECT"),
+        ("engineer", "schema", "engineering", "USAGE"),
     }

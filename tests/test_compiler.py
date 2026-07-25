@@ -57,20 +57,18 @@ clusters:
         # Check Cluster 1
         c1 = cluster_configs[0]
         assert c1["target_info"] == {"host": "test-host-1", "port": 5439, "database": "test_db_1"}
-        assert c1["desired_users"] == {"rum_user_jane"}
-        assert c1["desired_roles"] == {"rum_role_analyst"}
-        assert c1["desired_user_roles"] == {("rum_user_jane", "rum_role_analyst")}
-        assert c1["desired_role_grants"] == {("rum_role_analyst", "table", "sales.*", "SELECT")}
+        assert c1["desired_users"] == {"jane"}
+        assert c1["desired_roles"] == {"analyst"}
+        assert c1["desired_user_roles"] == {("jane", "analyst")}
+        assert c1["desired_role_grants"] == {("analyst", "table", "sales.*", "SELECT")}
 
         # Check Cluster 2
         c2 = cluster_configs[1]
         assert c2["target_info"] == {"host": "test-host-2", "port": 5439, "database": "test_db_2"}
-        assert c2["desired_users"] == {"rum_user_bob"}
-        assert c2["desired_roles"] == {"rum_role_engineer"}
-        assert c2["desired_user_roles"] == {("rum_user_bob", "rum_role_engineer")}
-        assert c2["desired_role_grants"] == {
-            ("rum_role_engineer", "table", "marketing.events", "INSERT")
-        }
+        assert c2["desired_users"] == {"bob"}
+        assert c2["desired_roles"] == {"engineer"}
+        assert c2["desired_user_roles"] == {("bob", "engineer")}
+        assert c2["desired_role_grants"] == {("engineer", "table", "marketing.events", "INSERT")}
 
     finally:
         os.remove(temp_path)
@@ -108,7 +106,7 @@ clusters:
 
         c = cluster_configs[0]
         assert c["target_info"] == {"host": "dev-cluster-2", "port": 5439, "database": "dev_db_2"}
-        assert c["desired_users"] == {"rum_user_bob"}
+        assert c["desired_users"] == {"bob"}
     finally:
         os.remove(temp_path)
 

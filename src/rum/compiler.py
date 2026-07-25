@@ -39,8 +39,7 @@ class Compiler:
             # Parse Roles
             raw_roles = cluster_block.get("roles", {})
             for role_name, role_data in raw_roles.items():
-                full_role_name = f"rum_role_{role_name}"
-                desired_roles.add(full_role_name)
+                desired_roles.add(role_name)
 
                 for perm_name in role_data.get("permissions", []):
                     if perm_name in raw_permissions:
@@ -49,18 +48,16 @@ class Compiler:
                         for privilege in perm.get("privileges", []):
                             for entity in perm.get("entities", []):
                                 desired_role_grants.add(
-                                    (full_role_name, resource_type, entity, privilege)
+                                    (role_name, resource_type, entity, privilege)
                                 )
 
             # Parse Users
             raw_users = cluster_block.get("users", {})
             for user_name, user_data in raw_users.items():
-                full_user_name = f"rum_user_{user_name}"
-                desired_users.add(full_user_name)
+                desired_users.add(user_name)
 
                 for role_name in user_data.get("roles", []):
-                    full_role_name = f"rum_role_{role_name}"
-                    desired_user_roles.add((full_user_name, full_role_name))
+                    desired_user_roles.add((user_name, role_name))
 
             cluster_configs.append(
                 {

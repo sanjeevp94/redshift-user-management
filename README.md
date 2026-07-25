@@ -54,7 +54,7 @@ make test
 
 ## Managing Permissions (The `config.yaml` Schema)
 
-The RUM engine parses an environment's `config.yaml` to identify discrete targets and their intended states. **Crucially**, the engine strictly operates within a `rum_user_` and `rum_role_` namespace, guaranteeing it will not touch or drop external enterprise resources.
+The RUM engine parses an environment's `config.yaml` to identify discrete targets and their intended states. The engine parses users and roles explicitly exactly as defined and will automatically mirror the catalog state accurately to them. **Note: Because the engine tracks absolute state, any active users or roles missing from your config.yaml will be dropped automatically.**
 
 ### Schema Example
 A `config.yaml` file contains an array of `clusters`. Each cluster acts as a completely isolated boundary.
@@ -175,10 +175,10 @@ export REDSHIFT_PASSWORD="password"
 export ACTION="plan"  # Set to "apply" to execute natively, "plan" for updateSQL
 
 # Run across all clusters in dev
-python3 scripts/run_liquibase.py deploy/dev/config.yaml deploy/dev/changelog.yaml
+uv run python scripts/run_liquibase.py deploy/dev/config.yaml deploy/dev/changelog.yaml
 
 # Run targeting ONLY dev-cluster-1
-python3 scripts/run_liquibase.py deploy/dev/config.yaml deploy/dev/changelog.yaml --target=dev-cluster-1
+uv run python scripts/run_liquibase.py deploy/dev/config.yaml deploy/dev/changelog.yaml --target=dev-cluster-1
 ```
 
 **2. Run RUM Permissions Engine:**
