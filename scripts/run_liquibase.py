@@ -30,13 +30,19 @@ def run_liquibase(config_path, changelog_path, action, target_host=None):
         port = target_info.get("port", "5439")
         db = target_info.get("database")
 
+        contexts = target_info.get("liquibase_contexts")
+        if not contexts:
+            # Fallback to the host name itself if no explicit context was provided,
+            # allowing scripts to target specific clusters cleanly.
+            contexts = host
+
         if not host or not db:
             print("Missing host or database in config.")
             continue
 
         url = f"jdbc:redshift://{host}:{port}/{db}"
 
-        print(f"\n--- Running Liquibase {action} on {host} ---")
+        print(f"\n--- Running Liquibase {action} on {host} (Contexts: {contexts}) ---")
 
         cmd = [
             "liquibase",
@@ -44,6 +50,7 @@ def run_liquibase(config_path, changelog_path, action, target_host=None):
             f"--username={username}",
             f"--password={password}",
             f"--changeLogFile={changelog_path}",
+            f"--contexts={contexts}",
             action,
         ]
 

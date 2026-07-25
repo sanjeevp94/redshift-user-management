@@ -3,6 +3,7 @@ clusters:
       host: "dev-cluster-1.abcdefg.us-east-1.redshift.amazonaws.com"
       port: 5439
       database: "dev_db"
+      liquibase_contexts: "core,reporting"
     users:
       jane_doe:
         roles:
@@ -23,6 +24,7 @@ clusters:
       host: "dev-cluster-2.abcdefg.us-east-1.redshift.amazonaws.com"
       port: 5439
       database: "dev_db"
+      liquibase_contexts: "core,ml-node"
     users:
       bob_smith:
         roles:

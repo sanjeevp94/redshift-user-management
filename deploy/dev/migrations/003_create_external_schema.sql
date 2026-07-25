@@ -1,5 +1,5 @@
 --liquibase formatted sql
---changeset jules:3
+--changeset jules:3 context:reporting
 
 CREATE EXTERNAL SCHEMA spectrum_schema
 FROM DATA CATALOG

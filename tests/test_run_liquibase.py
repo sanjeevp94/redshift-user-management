@@ -13,6 +13,7 @@ clusters:
       host: "dev-cluster-1"
       port: 5439
       database: "dev_db_1"
+      liquibase_contexts: "core,reporting"
   - target:
       host: "dev-cluster-2"
       port: 5439
@@ -48,6 +49,7 @@ clusters:
                     "--username=test_user",
                     "--password=test_password",
                     "--changeLogFile=dummy_changelog.yaml",
+                    "--contexts=core,reporting",
                     "update",
                 ]
 
@@ -59,6 +61,7 @@ clusters:
                     "--username=test_user",
                     "--password=test_password",
                     "--changeLogFile=dummy_changelog.yaml",
+                    "--contexts=dev-cluster-2",
                     "update",
                 ]
     finally:
@@ -108,6 +111,7 @@ clusters:
                     "--username=test_user",
                     "--password=test_password",
                     "--changeLogFile=dummy_changelog.yaml",
+                    "--contexts=dev-cluster-2",
                     "update",
                 ]
     finally:

@@ -1,5 +1,5 @@
 --liquibase formatted sql
---changeset jules:1
+--changeset jules:1 context:core
 
 -- Use liquibase property substitution
 CREATE DATASHARE ${datashare_name};
