@@ -37,18 +37,17 @@ The repository is segmented by environment into the `deploy/` directory to facil
 - **Formatting/Linting**: `ruff` executed via `prek` (a Rust-powered replacement for `pre-commit`).
 
 ### Setup
+We provide a `Makefile` to quickly bootstrap your local environment.
+
 ```bash
-# Install uv and prek
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv tool install prek
+# Installs uv, prek, and python dependencies locally
+make setup
 
-# Sync dependencies and run hooks
-uv sync
-prek run --all-files
+# Run pre-commit formatters
+make lint
 
-# Run tests
-uv pip install -e ".[dev]"
-pytest tests/
+# Run the pytest suite
+make test
 ```
 
 ---
@@ -101,29 +100,67 @@ When the engine detects `schema.*`, it natively deduces the optimal outcome:
 - It issues `GRANT {privilege} ON ALL TABLES IN SCHEMA {schema}` for current objects.
 - It concurrently issues `ALTER DEFAULT PRIVILEGES IN SCHEMA {schema}` to handle future objects automatically.
 
+### Supported Privileges
+The framework securely wraps SQL generation against your provided `config.yaml` permissions blocks. The following resource types and native privileges are generally applicable:
+
+| Resource Type | Available Privileges | Notes |
+|---------------|----------------------|-------|
+| `table`       | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `DROP`, `REFERENCES`, `ALL` | Applicable to individual tables or schema wildcards (`.*`). |
+| `schema`      | `USAGE`, `CREATE`, `ALL` | The engine implicitly injects `USAGE` when parsing any enclosed table/model resources natively to prevent Redshift lockups. |
+| `model`       | `EXECUTE`, `ALL` | Useful for explicitly isolating Redshift ML modeling endpoints from standard analytical access constraints. |
+
 ---
 
 ## Ad-Hoc DDL Migrations (Liquibase)
 
 Liquibase manages structural deployments by consuming `.sql` scripts from the `deploy/<env>/migrations/` directory.
 
-### Contexts (Targeted Execution)
-If an environment possesses multiple clusters (e.g., `dev-cluster-1` and `dev-cluster-2`), you can prevent specific SQL scripts from running everywhere by leveraging **Liquibase Contexts**.
+### Liquibase Contexts (Targeted Cluster Execution)
 
-Define your contexts in the `config.yaml` (e.g., `liquibase_contexts: "core,reporting"`). If omitted, the context implicitly defaults to the target's `host` string.
+In multi-cluster environments (e.g., separating analytical workloads from ML workloads inside `dev`), it is often necessary to execute specific SQL migrations against a subset of clusters rather than shotgunning scripts universally. You can achieve this using **Liquibase Contexts**.
 
-In your migration file header, tag the context:
+#### 1. Assigning Contexts to Targets
+Inside your `config.yaml`, declare `liquibase_contexts` as a comma-separated list of tags denoting the cluster's purpose. If omitted, the context implicitly defaults to the target's `host` string (allowing you to explicitly single out clusters natively).
 
+```yaml
+clusters:
+  # Cluster 1 acts as our Core Operational cluster + Reporting endpoint
+  - target:
+      host: "dev-cluster-1.abcdefg.us-east-1.redshift.amazonaws.com"
+      port: 5439
+      database: "dev_db"
+      liquibase_contexts: "core,reporting"
+
+  # Cluster 2 is an isolated node solely dedicated to Heavy ML training
+  - target:
+      host: "dev-cluster-2.abcdefg.us-east-1.redshift.amazonaws.com"
+      port: 5439
+      database: "dev_db"
+      liquibase_contexts: "core,ml-node"
+```
+
+#### 2. Tagging Migration Files
+By default, a Liquibase script runs on **all** targets unless constrained by a context tag in its header. You map a script to a specific cluster type by appending `context:<tag>`:
+
+**Example A: Global Deployment** (Runs on both clusters)
 ```sql
 --liquibase formatted sql
---changeset jules:1 context:reporting
+--changeset author:1
 
-CREATE EXTERNAL SCHEMA spectrum_schema
-FROM DATA CATALOG
-DATABASE 'spectrum_db_${environment_name}'
-IAM_ROLE default;
+CREATE DATASHARE dev_sales_share;
 ```
-*Note: We natively support variable substitution (like `${environment_name}`) mapped directly from the `changelog.yaml`.*
+
+**Example B: Targeted Deployment** (Runs ONLY on Cluster 2 because of `ml-node`)
+```sql
+--liquibase formatted sql
+--changeset author:2 context:ml-node
+
+-- This expensive model creation will strictly target the ML-dedicated cluster.
+CREATE MODEL ml.customer_churn_model
+FROM (SELECT * FROM public.customer_data)
+TARGET churn FUNCTION predict_churn IAM_ROLE default;
+```
+*Note: We natively support variable substitution (like `${environment_name}`) mapped directly from the `changelog.yaml` file.*
 
 ---
 
@@ -146,12 +183,12 @@ python3 scripts/run_liquibase.py deploy/dev/config.yaml deploy/dev/changelog.yam
 
 **2. Run RUM Permissions Engine:**
 ```bash
-# Preview the declarative Set Math diff
-uv run rum plan --config=deploy/dev/config.yaml
+# Preview the declarative Set Math diff (Defaults to dev)
+make plan
 
-# Apply the diff
-uv run rum apply --config=deploy/dev/config.yaml --auto_approve=True
+# Apply the diff (Defaults to dev, prompts for approval)
+make apply
 
-# Apply the diff ONLY to a specific cluster
-uv run rum apply --config=deploy/dev/config.yaml --target=dev-cluster-1
+# Target a different environment and a specific cluster
+make plan ENV=uat TARGET=uat-cluster
 ```
