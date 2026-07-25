@@ -192,3 +192,14 @@ make apply
 # Target a different environment and a specific cluster
 make plan ENV=uat TARGET=uat-cluster
 ```
+
+**3. Syncing Live State (Reverse Compilation):**
+If you have existing users/roles natively in Redshift or lost your configuration, you can completely reverse-engineer the live Redshift catalog privileges directly back into a declarative `config.yaml`.
+```bash
+# Overwrites deploy/dev/config.yaml with the live database privileges automatically
+make sync
+
+# Overwrites a targeted cluster within UAT specifically
+make sync ENV=uat TARGET=uat-cluster
+```
+*Note: Because this directly overwrites your configuration file, ensure you have committed any intended changes to Git first or are running this strictly to baseline an initial configuration.*

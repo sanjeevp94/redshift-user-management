@@ -1,9 +1,0 @@
-Metadata-Version: 2.4
-Name: rum
-Version: 0.1.0
-Summary: Declarative Redshift User Manager
-Requires-Python: >=3.10
-Requires-Dist: fire>=0.6.0
-Requires-Dist: rich>=13.7.1
-Requires-Dist: pyyaml>=6.0.1
-Requires-Dist: psycopg2-binary>=2.9.9

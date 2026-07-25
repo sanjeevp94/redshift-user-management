@@ -1,4 +1,4 @@
-.PHONY: help setup test lint plan apply
+.PHONY: help setup test lint plan apply sync
 
 ENV ?= dev
 TARGET ?=
@@ -12,6 +12,7 @@ help:
 	@echo "  lint     Run pre-commit checks using prek."
 	@echo "  plan     Run the declarative RUM plan. Use ENV=<env> and TARGET=<host> to customize."
 	@echo "  apply    Apply the declarative RUM changes. Use ENV=<env> and TARGET=<host> to customize."
+	@echo "  sync     Sync current Redshift state back into the config.yaml file. Use ENV=<env> and TARGET=<host> to customize."
 
 setup:
 	@echo "Setting up the environment..."
@@ -42,4 +43,12 @@ apply:
 		uv run rum apply --config=deploy/$(ENV)/config.yaml --target=$(TARGET); \
 	else \
 		uv run rum apply --config=deploy/$(ENV)/config.yaml; \
+	fi
+
+sync:
+	@echo "Running RUM sync for environment: $(ENV)"
+	@if [ -n "$(TARGET)" ]; then \
+		uv run rum sync --config=deploy/$(ENV)/config.yaml --target=$(TARGET); \
+	else \
+		uv run rum sync --config=deploy/$(ENV)/config.yaml; \
 	fi

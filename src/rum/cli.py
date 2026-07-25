@@ -1,9 +1,11 @@
 import fire
+import yaml
 from rich.console import Console
 from rich.prompt import Confirm
 from rum.compiler import compile_state
 from rum.redshift import get_connection, fetch_live_state
 from rum.diff import calculate_diff
+from rum.sync import build_cluster_yaml_block
 
 console = Console()
 
@@ -156,6 +158,60 @@ class RumCLI:
                 )
             finally:
                 conn.close()
+
+    def sync(self, config: str = "config.yaml", target: str = None):
+        """Syncs the live database state directly over your config.yaml file."""
+        target_msg = f" for target {target}" if target else ""
+        console.print(
+            f"[bold blue]Loading reference connection settings from {config}{target_msg}...[/bold blue]"
+        )
+
+        # Because merging complex nested dictionaries back to a source file natively while preserving structure
+        # is difficult, we will just read the original raw YAML, find the target block, and replace it.
+        # This prevents `--target` syncs from wiping out non-targeted clusters.
+        with open(config, "r") as f:
+            raw_config = yaml.safe_load(f) or {}
+
+        clusters = raw_config.get("clusters", [])
+        if not clusters:
+            clusters = [raw_config]
+
+        synced_clusters = []
+
+        for cluster_block in clusters:
+            target_info = cluster_block.get("target", {})
+            if not target_info and "targets" in cluster_block and cluster_block["targets"]:
+                target_info = cluster_block["targets"][0]
+
+            target_name = target_info.get("host", "Unknown Target")
+
+            # Only sync if it matches the target (or if no target is provided, sync all)
+            if target and target_name != target:
+                synced_clusters.append(cluster_block)
+                continue
+
+            console.print(f"[bold blue]Fetching live state from {target_name}...[/bold blue]")
+            conn = get_connection(target_info)
+            try:
+                live_users, live_roles, live_user_roles, live_role_grants = fetch_live_state(conn)
+            finally:
+                conn.close()
+
+            new_block = build_cluster_yaml_block(
+                target_info, live_users, live_roles, live_user_roles, live_role_grants
+            )
+            synced_clusters.append(new_block)
+
+        if not synced_clusters:
+            console.print("[bold yellow]No target clusters configured to sync![/bold yellow]")
+            return
+
+        final_yaml = {"clusters": synced_clusters}
+
+        with open(config, "w") as f:
+            yaml.dump(final_yaml, f, sort_keys=False, default_flow_style=False)
+
+        console.print(f"[bold green]Successfully synced live state back to {config}[/bold green]")
 
 
 def main():
