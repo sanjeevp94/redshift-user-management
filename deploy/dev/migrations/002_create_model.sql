@@ -1,5 +1,5 @@
 --liquibase formatted sql
---changeset jules:2 context:ml-node
+--changeset jules:2 context:producer
 
 CREATE MODEL ml.customer_churn_model
 FROM (SELECT customer_id, age, tenure, is_active, churn FROM public.customer_data)

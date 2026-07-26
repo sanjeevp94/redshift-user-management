@@ -13,11 +13,12 @@ clusters:
       host: "dev-cluster-1"
       port: 5439
       database: "dev_db_1"
-      liquibase_contexts: "core,reporting"
+      liquibase_contexts: "producer"
   - target:
       host: "dev-cluster-2"
       port: 5439
       database: "dev_db_2"
+      liquibase_contexts: "consumer"
 """
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
         f.write(config_content)
@@ -50,7 +51,7 @@ clusters:
                         "--username=test_user",
                         "--password=test_password",
                         "--changeLogFile=dummy_changelog.yaml",
-                        "--contexts=core,reporting",
+                        "--contexts=producer",
                         "update",
                     ]
 
@@ -62,7 +63,7 @@ clusters:
                         "--username=test_user",
                         "--password=test_password",
                         "--changeLogFile=dummy_changelog.yaml",
-                        "--contexts=dev-cluster-2",
+                        "--contexts=consumer",
                         "update",
                     ]
     finally:

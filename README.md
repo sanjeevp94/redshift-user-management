@@ -117,26 +117,26 @@ Liquibase manages structural deployments by consuming `.sql` scripts from the `d
 
 ### Liquibase Contexts (Targeted Cluster Execution)
 
-In multi-cluster environments (e.g., separating analytical workloads from ML workloads inside `dev`), it is often necessary to execute specific SQL migrations against a subset of clusters rather than shotgunning scripts universally. You can achieve this using **Liquibase Contexts**.
+In multi-cluster environments (e.g., establishing a Data Sharing architecture with isolated **Producer** and **Consumer** workloads), it is critical to execute specific SQL migrations against a subset of clusters rather than shotgunning scripts universally. You can achieve this perfectly using **Liquibase Contexts**.
 
 #### 1. Assigning Contexts to Targets
 Inside your `config.yaml`, declare `liquibase_contexts` as a comma-separated list of tags denoting the cluster's purpose. If omitted, the context implicitly defaults to the target's `host` string (allowing you to explicitly single out clusters natively).
 
 ```yaml
 clusters:
-  # Cluster 1 acts as our Core Operational cluster + Reporting endpoint
+  # The Producer handles heavy DBT transformations and modeling
   - target:
-      host: "dev-cluster-1.abcdefg.us-east-1.redshift.amazonaws.com"
+      host: "dev-producer.abcdefg.us-east-1.redshift.amazonaws.com"
       port: 5439
       database: "dev_db"
-      liquibase_contexts: "core,reporting"
+      liquibase_contexts: "producer"
 
-  # Cluster 2 is an isolated node solely dedicated to Heavy ML training
+  # The Consumer safely hosts BI queries against shared data
   - target:
-      host: "dev-cluster-2.abcdefg.us-east-1.redshift.amazonaws.com"
+      host: "dev-consumer.abcdefg.us-east-1.redshift.amazonaws.com"
       port: 5439
       database: "dev_db"
-      liquibase_contexts: "core,ml-node"
+      liquibase_contexts: "consumer"
 ```
 
 #### 2. Tagging Migration Files
@@ -150,15 +150,13 @@ By default, a Liquibase script runs on **all** targets unless constrained by a c
 CREATE DATASHARE dev_sales_share;
 ```
 
-**Example B: Targeted Deployment** (Runs ONLY on Cluster 2 because of `ml-node`)
+**Example B: Targeted Deployment** (Runs ONLY on the Consumer because of `consumer`)
 ```sql
 --liquibase formatted sql
---changeset author:2 context:ml-node
+--changeset author:2 context:consumer
 
--- This expensive model creation will strictly target the ML-dedicated cluster.
-CREATE MODEL ml.customer_churn_model
-FROM (SELECT * FROM public.customer_data)
-TARGET churn FUNCTION predict_churn IAM_ROLE default;
+-- Mounts the data share created on the producer safely onto the consumer cluster
+CREATE DATABASE producer_data FROM DATASHARE ${datashare_name} OF NAMESPACE 'producer-namespace-uuid';
 ```
 *Note: We natively support variable substitution (like `${environment_name}`) mapped directly from the `changelog.yaml` file.*
 

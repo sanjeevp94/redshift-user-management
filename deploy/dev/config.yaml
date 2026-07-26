@@ -1,42 +1,51 @@
 clusters:
   - target:
-      host: "dev-cluster-1.abcdefg.us-east-1.redshift.amazonaws.com"
+      host: "dev-producer.abcdefg.us-east-1.redshift.amazonaws.com"
       port: 5439
       database: "dev_db"
-      liquibase_contexts: "core,reporting"
+      liquibase_contexts: "producer"
     users:
-      jane_doe:
+      dbt_user:
         roles:
-          - marketing_analyst
+          - dbt_transformer
     roles:
-      marketing_analyst:
+      dbt_transformer:
         permissions:
-          - read_campaigns
+          - write_campaigns
+          - full_schema_access
     permissions:
-      read_campaigns:
+      write_campaigns:
         resource_type: table
         privileges:
-          - SELECT
+          - ALL
         entities:
-          - "marketing.campaigns"
+          - "marketing.*"
+          - "sales.*"
+
+      full_schema_access:
+        resource_type: schema
+        privileges:
+          - ALL
+        entities:
+          - "analytics"
 
   - target:
-      host: "dev-cluster-2.abcdefg.us-east-1.redshift.amazonaws.com"
+      host: "dev-consumer.abcdefg.us-east-1.redshift.amazonaws.com"
       port: 5439
       database: "dev_db"
-      liquibase_contexts: "core,ml-node"
+      liquibase_contexts: "consumer"
     users:
-      bob_smith:
+      bi_user:
         roles:
-          - data_scientist
+          - bi_analyst
     roles:
-      data_scientist:
+      bi_analyst:
         permissions:
           - read_all_models
     permissions:
       read_all_models:
-        resource_type: model
+        resource_type: table
         privileges:
-          - EXECUTE
+          - SELECT
         entities:
-          - "ml.*"
+          - "analytics.*"
