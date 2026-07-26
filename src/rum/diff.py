@@ -101,7 +101,11 @@ def calculate_diff(
 
     # 2. Revoke current privileges.
     for role, resource_type, entity, privilege in role_grants_to_revoke:
-        if resource_type == "schema":
+        if resource_type == "database":
+            sql_statements.append(
+                f'REVOKE {privilege} ON DATABASE {_quote_ident(entity)} FROM "{role}";'
+            )
+        elif resource_type == "schema":
             sql_statements.append(
                 f'REVOKE {privilege} ON SCHEMA {_quote_ident(entity)} FROM "{role}";'
             )
@@ -142,16 +146,20 @@ def calculate_diff(
     for user, role in user_roles_to_grant:
         sql_statements.append(f'GRANT ROLE "{role}" TO "{user}";')
 
-    # 9. Grant schema privileges (including implicitly added USAGE).
+    # 9. Grant database & schema privileges (including implicitly added USAGE).
     for role, resource_type, entity, privilege in role_grants_to_grant:
-        if resource_type == "schema":
+        if resource_type == "database":
+            sql_statements.append(
+                f'GRANT {privilege} ON DATABASE {_quote_ident(entity)} TO "{role}";'
+            )
+        elif resource_type == "schema":
             sql_statements.append(
                 f'GRANT {privilege} ON SCHEMA {_quote_ident(entity)} TO "{role}";'
             )
 
     # 10. Grant privileges (and alter default privileges for .* entities).
     for role, resource_type, entity, privilege in role_grants_to_grant:
-        if resource_type == "schema":
+        if resource_type in ("schema", "database"):
             continue
         elif entity.endswith(".*"):
             schema = entity.split(".")[0]

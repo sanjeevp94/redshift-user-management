@@ -1,20 +1,51 @@
 clusters:
   - target:
-      host: "prod-cluster.abcdefg.us-east-1.redshift.amazonaws.com"
+      host: "prod-producer.abcdefg.us-east-1.redshift.amazonaws.com"
       port: 5439
       database: "prod_db"
+      liquibase_contexts: "producer"
     users:
-      jane_doe:
+      dbt_user:
         roles:
-          - marketing_analyst
+          - dbt_transformer
     roles:
-      marketing_analyst:
+      dbt_transformer:
         permissions:
-          - read_campaigns
+          - write_campaigns
+          - full_schema_access
     permissions:
-      read_campaigns:
+      write_campaigns:
+        resource_type: table
+        privileges:
+          - ALL
+        entities:
+          - "marketing.*"
+          - "sales.*"
+
+      full_schema_access:
+        resource_type: schema
+        privileges:
+          - ALL
+        entities:
+          - "analytics"
+
+  - target:
+      host: "prod-consumer.abcdefg.us-east-1.redshift.amazonaws.com"
+      port: 5439
+      database: "prod_db"
+      liquibase_contexts: "consumer"
+    users:
+      bi_user:
+        roles:
+          - bi_analyst
+    roles:
+      bi_analyst:
+        permissions:
+          - read_all_models
+    permissions:
+      read_all_models:
         resource_type: table
         privileges:
           - SELECT
         entities:
-          - "marketing.campaigns"
+          - "analytics.*"

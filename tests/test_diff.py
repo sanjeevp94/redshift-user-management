@@ -11,6 +11,7 @@ def test_diff_engine_calculates_correctly():
     desired_role_grants = {
         ("analyst", "table", "sales.*", "SELECT"),
         ("analyst", "schema", "analytics", "USAGE"),
+        ("analyst", "database", "producer_data", "USAGE"),
     }
 
     live_users = {"jane", "old"}
@@ -30,6 +31,7 @@ def test_diff_engine_calculates_correctly():
             "USAGE",
         ),  # Will be kept via implicit schema grant from diff engine
         ("old", "table", "old.*", "SELECT"),
+        ("old", "database", "old_db", "USAGE"),
     }
 
     diff = calculate_diff(
@@ -53,6 +55,7 @@ def test_diff_engine_calculates_correctly():
         in actual_diff
     )
     assert 'REVOKE SELECT ON ALL TABLES IN SCHEMA "old" FROM "old";' in actual_diff
+    assert 'REVOKE USAGE ON DATABASE "old_db" FROM "old";' in actual_diff
     assert 'REVOKE ROLE "old" FROM "old";' in actual_diff
     assert 'DROP USER "old";' in actual_diff
     assert 'DROP ROLE "old";' in actual_diff
@@ -64,6 +67,7 @@ def test_diff_engine_calculates_correctly():
     assert 'GRANT ROLE "analyst" TO "new";' in actual_diff
 
     assert 'GRANT USAGE ON SCHEMA "analytics" TO "analyst";' in actual_diff
+    assert 'GRANT USAGE ON DATABASE "producer_data" TO "analyst";' in actual_diff
     # Implicit schema grants are only added if NOT present in live state. sales was already in live state.
     assert 'GRANT USAGE ON SCHEMA "sales" TO "analyst";' not in actual_diff
     assert 'GRANT SELECT ON ALL TABLES IN SCHEMA "sales" TO "analyst";' in actual_diff

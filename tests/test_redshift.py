@@ -21,6 +21,8 @@ def test_fetch_live_state():
         yield [("engineer", "engineering", "SELECT", "table")]
         # 6. query svv_schema_privileges
         yield [("engineer", "engineering", "USAGE")]
+        # 7. query svv_database_privileges
+        yield [("engineer", "shared_db", "USAGE")]
 
     mock_cur.fetchall.side_effect = fetchall_side_effect()
 
@@ -33,4 +35,5 @@ def test_fetch_live_state():
         ("engineer", "table", "engineering.deployments", "INSERT"),
         ("engineer", "table", "engineering.*", "SELECT"),
         ("engineer", "schema", "engineering", "USAGE"),
+        ("engineer", "database", "shared_db", "USAGE"),
     }

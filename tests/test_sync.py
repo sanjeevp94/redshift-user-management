@@ -1,4 +1,4 @@
-from src.rum.sync import build_cluster_yaml_block
+from rum.sync import build_cluster_yaml_block
 
 
 def test_sync_build_cluster_yaml_block():
@@ -10,6 +10,7 @@ def test_sync_build_cluster_yaml_block():
         ("analyst", "table", "sales.events", "SELECT"),
         ("analyst", "schema", "sales", "USAGE"),
         ("admin", "model", "ml.*", "ALL"),
+        ("analyst", "database", "producer_data", "USAGE"),
     }
 
     yaml_dict = build_cluster_yaml_block(
@@ -26,6 +27,7 @@ def test_sync_build_cluster_yaml_block():
     # Validate roles mapped to generated permission names
     assert "table_sales_events" in yaml_dict["roles"]["analyst"]["permissions"]
     assert "schema_sales" in yaml_dict["roles"]["analyst"]["permissions"]
+    assert "database_producer_data" in yaml_dict["roles"]["analyst"]["permissions"]
     assert "model_ml_all" in yaml_dict["roles"]["admin"]["permissions"]
 
     # Validate permissions generated blocks natively
@@ -45,4 +47,10 @@ def test_sync_build_cluster_yaml_block():
         "resource_type": "model",
         "privileges": ["ALL"],
         "entities": ["ml.*"],
+    }
+
+    assert yaml_dict["permissions"]["database_producer_data"] == {
+        "resource_type": "database",
+        "privileges": ["USAGE"],
+        "entities": ["producer_data"],
     }

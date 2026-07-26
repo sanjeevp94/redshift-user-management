@@ -85,4 +85,15 @@ def fetch_live_state(
             if role_name not in ("sys:superuser", "sys:secadmin"):
                 live_role_grants.add((role_name, "schema", schema_name, privilege.upper()))
 
+        # 7. Fetch database privileges (crucial for Data Shares mounted as local DBs)
+        cur.execute("""
+            SELECT grantee, database_name, privilege_type
+            FROM svv_database_privileges
+            WHERE database_name IS NOT NULL
+        """)
+        for row in cur.fetchall():
+            role_name, database_name, privilege = row
+            if role_name not in ("sys:superuser", "sys:secadmin"):
+                live_role_grants.add((role_name, "database", database_name, privilege.upper()))
+
     return live_users, live_roles, live_user_roles, live_role_grants

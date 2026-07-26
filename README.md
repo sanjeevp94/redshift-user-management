@@ -61,38 +61,63 @@ A `config.yaml` file contains an array of `clusters`. Each cluster acts as a com
 
 ```yaml
 clusters:
+  # The Producer cluster transforms data natively
   - target:
-      host: "dev-cluster-1.us-east-1.redshift.amazonaws.com"
+      host: "dev-producer.us-east-1.redshift.amazonaws.com"
       port: 5439
       database: "dev_db"
-      liquibase_contexts: "core,reporting"  # Optional: For targeted SQL migrations
+      liquibase_contexts: "producer"  # Maps to targeted SQL migrations
 
     users:
-      jane_doe:
+      dbt_user:
         roles:
-          - marketing_analyst
+          - dbt_transformer
 
     roles:
-      marketing_analyst:
+      dbt_transformer:
         permissions:
-          - read_campaigns
-          - access_models
+          - write_campaigns
 
     permissions:
+      write_campaigns:
+        resource_type: table
+        privileges:
+          - ALL
+        entities:
+          - "marketing.*"   # Wildcard: Grant access to ALL current AND future tables in schema
+
+  # The Consumer cluster accesses shared data for BI
+  - target:
+      host: "dev-consumer.us-east-1.redshift.amazonaws.com"
+      port: 5439
+      database: "dev_db"
+      liquibase_contexts: "consumer"
+
+    users:
+      bi_user:
+        roles:
+          - bi_analyst
+
+    roles:
+      bi_analyst:
+        permissions:
+          - read_shared_db
+          - read_campaigns
+
+    permissions:
+      read_shared_db:
+        resource_type: database
+        privileges:
+          - USAGE
+        entities:
+          - "producer_data"  # Grant usage on the mounted datashare DB
+
       read_campaigns:
         resource_type: table
         privileges:
           - SELECT
         entities:
-          - "marketing.campaigns"   # Grant access to a specific table
-          - "sales.*"               # Wildcard: Grant access to ALL current AND future tables in schema
-
-      access_models:
-        resource_type: model
-        privileges:
-          - EXECUTE
-        entities:
-          - "ml.*"
+          - "marketing.*"
 ```
 
 ### Wildcards (`.*`)
@@ -108,6 +133,7 @@ The framework securely wraps SQL generation against your provided `config.yaml` 
 | `table`       | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `DROP`, `REFERENCES`, `ALL` | Applicable to individual tables or schema wildcards (`.*`). |
 | `schema`      | `USAGE`, `CREATE`, `ALL` | The engine implicitly injects `USAGE` when parsing any enclosed table/model resources natively to prevent Redshift lockups. |
 | `model`       | `EXECUTE`, `ALL` | Useful for explicitly isolating Redshift ML modeling endpoints from standard analytical access constraints. |
+| `database`    | `USAGE`, `CREATE`, `ALL` | Vital for assigning access to dynamically mounted **Data Shares** locally attached to consuming clusters. |
 
 ---
 
