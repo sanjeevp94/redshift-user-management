@@ -3,12 +3,21 @@ import os
 import sys
 import yaml
 import subprocess
-import argparse
+import fire
 
 
-def run_liquibase(config_path, changelog_path, action, target_host=None):
+def run_liquibase(config_path: str, changelog_path: str, target: str = None):
     with open(config_path, "r") as f:
         config = yaml.safe_load(f) or {}
+
+    # In jenkins ACTION is typically 'plan' or 'apply'
+    jenkins_action = os.environ.get("ACTION", "plan")
+
+    # Map jenkins actions to liquibase commands
+    if jenkins_action == "apply":
+        action = "update"
+    else:
+        action = "updateSQL"  # Dry run equivalent in liquibase
 
     clusters = config.get("clusters", [])
     if not clusters:
@@ -24,7 +33,7 @@ def run_liquibase(config_path, changelog_path, action, target_host=None):
 
         host = target_info.get("host")
 
-        if target_host and host != target_host:
+        if target and host != target:
             continue
 
         port = target_info.get("port", "5439")
@@ -62,23 +71,9 @@ def run_liquibase(config_path, changelog_path, action, target_host=None):
             sys.exit(e.returncode)
 
 
+def main():
+    fire.Fire(run_liquibase)
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run Liquibase migrations for Redshift clusters.")
-    parser.add_argument("config_path", help="Path to config.yaml")
-    parser.add_argument("changelog_path", help="Path to changelog.yaml")
-    parser.add_argument(
-        "--target", help="Specific target host to run migrations against", default=None
-    )
-
-    args = parser.parse_args()
-
-    # In jenkins ACTION is typically 'plan' or 'apply'
-    jenkins_action = os.environ.get("ACTION", "plan")
-
-    # Map jenkins actions to liquibase commands
-    if jenkins_action == "apply":
-        lb_action = "update"
-    else:
-        lb_action = "updateSQL"  # Dry run equivalent in liquibase
-
-    run_liquibase(args.config_path, args.changelog_path, lb_action, args.target)
+    main()

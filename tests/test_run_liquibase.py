@@ -33,37 +33,38 @@ clusters:
         with patch.dict(
             os.environ, {"REDSHIFT_USER": "test_user", "REDSHIFT_PASSWORD": "test_password"}
         ):
-            with patch("subprocess.run") as mock_run:
-                spec.loader.exec_module(run_liquibase_module)
+            with patch.dict(os.environ, {"ACTION": "apply"}):
+                with patch("subprocess.run") as mock_run:
+                    spec.loader.exec_module(run_liquibase_module)
 
-                # Call the function directly
-                run_liquibase_module.run_liquibase(temp_path, "dummy_changelog.yaml", "update")
+                    # Call the function directly
+                    run_liquibase_module.run_liquibase(temp_path, "dummy_changelog.yaml")
 
-                assert mock_run.call_count == 2
+                    assert mock_run.call_count == 2
 
-                # Check call 1
-                cmd1 = mock_run.call_args_list[0][0][0]
-                assert cmd1 == [
-                    "liquibase",
-                    "--url=jdbc:redshift://dev-cluster-1:5439/dev_db_1",
-                    "--username=test_user",
-                    "--password=test_password",
-                    "--changeLogFile=dummy_changelog.yaml",
-                    "--contexts=core,reporting",
-                    "update",
-                ]
+                    # Check call 1
+                    cmd1 = mock_run.call_args_list[0][0][0]
+                    assert cmd1 == [
+                        "liquibase",
+                        "--url=jdbc:redshift://dev-cluster-1:5439/dev_db_1",
+                        "--username=test_user",
+                        "--password=test_password",
+                        "--changeLogFile=dummy_changelog.yaml",
+                        "--contexts=core,reporting",
+                        "update",
+                    ]
 
-                # Check call 2
-                cmd2 = mock_run.call_args_list[1][0][0]
-                assert cmd2 == [
-                    "liquibase",
-                    "--url=jdbc:redshift://dev-cluster-2:5439/dev_db_2",
-                    "--username=test_user",
-                    "--password=test_password",
-                    "--changeLogFile=dummy_changelog.yaml",
-                    "--contexts=dev-cluster-2",
-                    "update",
-                ]
+                    # Check call 2
+                    cmd2 = mock_run.call_args_list[1][0][0]
+                    assert cmd2 == [
+                        "liquibase",
+                        "--url=jdbc:redshift://dev-cluster-2:5439/dev_db_2",
+                        "--username=test_user",
+                        "--password=test_password",
+                        "--changeLogFile=dummy_changelog.yaml",
+                        "--contexts=dev-cluster-2",
+                        "update",
+                    ]
     finally:
         os.remove(temp_path)
 
@@ -93,26 +94,27 @@ clusters:
         with patch.dict(
             os.environ, {"REDSHIFT_USER": "test_user", "REDSHIFT_PASSWORD": "test_password"}
         ):
-            with patch("subprocess.run") as mock_run:
-                spec.loader.exec_module(run_liquibase_module)
+            with patch.dict(os.environ, {"ACTION": "apply"}):
+                with patch("subprocess.run") as mock_run:
+                    spec.loader.exec_module(run_liquibase_module)
 
-                # Call the function directly with target
-                run_liquibase_module.run_liquibase(
-                    temp_path, "dummy_changelog.yaml", "update", "dev-cluster-2"
-                )
+                    # Call the function directly with target
+                    run_liquibase_module.run_liquibase(
+                        temp_path, "dummy_changelog.yaml", target="dev-cluster-2"
+                    )
 
-                assert mock_run.call_count == 1
+                    assert mock_run.call_count == 1
 
-                # Check it only called dev-cluster-2
-                cmd1 = mock_run.call_args_list[0][0][0]
-                assert cmd1 == [
-                    "liquibase",
-                    "--url=jdbc:redshift://dev-cluster-2:5439/dev_db_2",
-                    "--username=test_user",
-                    "--password=test_password",
-                    "--changeLogFile=dummy_changelog.yaml",
-                    "--contexts=dev-cluster-2",
-                    "update",
-                ]
+                    # Check it only called dev-cluster-2
+                    cmd1 = mock_run.call_args_list[0][0][0]
+                    assert cmd1 == [
+                        "liquibase",
+                        "--url=jdbc:redshift://dev-cluster-2:5439/dev_db_2",
+                        "--username=test_user",
+                        "--password=test_password",
+                        "--changeLogFile=dummy_changelog.yaml",
+                        "--contexts=dev-cluster-2",
+                        "update",
+                    ]
     finally:
         os.remove(temp_path)

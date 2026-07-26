@@ -33,7 +33,7 @@ pipeline {
                     def targetArg = params.TARGET_CLUSTER ? "--target=${params.TARGET_CLUSTER}" : ""
                     // Ensure Liquibase is available or installed here depending on agent config.
                     // Action gets passed as ACTION env var natively by Jenkins parameters.
-                    sh "export PATH=\"\$HOME/.cargo/bin:\$PATH\" && uv run python scripts/run_liquibase.py deploy/dev/config.yaml deploy/dev/changelog.yaml ${targetArg}"
+                    sh "export PATH=\"\$HOME/.cargo/bin:\$PATH\" && uv run python scripts/run_liquibase.py --config_path=deploy/dev/config.yaml --changelog_path=deploy/dev/changelog.yaml ${targetArg}"
                 }
             }
         }

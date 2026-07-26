@@ -31,7 +31,7 @@ pipeline {
             steps {
                 script {
                     def targetArg = params.TARGET_CLUSTER ? "--target=${params.TARGET_CLUSTER}" : ""
-                    sh "export PATH=\"\$HOME/.cargo/bin:\$PATH\" && uv run python scripts/run_liquibase.py deploy/prod/config.yaml deploy/prod/changelog.yaml ${targetArg}"
+                    sh "export PATH=\"\$HOME/.cargo/bin:\$PATH\" && uv run python scripts/run_liquibase.py --config_path=deploy/prod/config.yaml --changelog_path=deploy/prod/changelog.yaml ${targetArg}"
                 }
             }
         }
